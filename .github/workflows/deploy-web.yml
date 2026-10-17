@@ -33,7 +33,10 @@ jobs:
       - name: Build web (version et commit visibles dans Paramètres)
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          # --no-web-resources-cdn : moteur Flutter (CanvasKit) servi par le
+          # site lui-même, pour que l'app s'ouvre aussi hors connexion.
           flutter build web --release --base-href /MoniFlex/ \
+            --no-web-resources-cdn \
             --dart-define=APP_VERSION=$VERSION \
             --dart-define=APP_COMMIT=${GITHUB_SHA::7}
           cp tool/flutter_service_worker.js build/web/flutter_service_worker.js

@@ -1,18 +1,20 @@
 {{flutter_js}}
 {{flutter_build_config}}
 
-// Pas de service worker : il gardait d'anciennes versions en cache (surtout
-// sur iPhone, écran d'accueil). On désinstalle aussi celui des anciennes
-// versions, pour que chaque ouverture charge la dernière publication.
+// Service worker maison (sw.js) : ouverture sans connexion, sans jamais
+// bloquer une ancienne version (réseau d'abord). On désinstalle tout autre
+// service worker, notamment celui de Flutter des toutes premières versions,
+// qui gardait d'anciennes versions en cache.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((regs) => {
-    for (const reg of regs) reg.unregister();
+    for (const reg of regs) {
+      const script = (reg.active || reg.waiting || reg.installing)?.scriptURL || '';
+      if (!script.endsWith('/sw.js')) reg.unregister();
+    }
   });
-  if ('caches' in window) {
-    caches.keys().then((keys) => {
-      for (const key of keys) caches.delete(key);
-    });
-  }
+  navigator.serviceWorker.register('sw.js').catch((e) => {
+    console.warn('Service worker MoniFlex non installé :', e);
+  });
 }
 
 _flutter.loader.load();
