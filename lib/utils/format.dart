@@ -28,6 +28,41 @@ String formatDate(DateTime d) =>
 
 String formatShortDate(DateTime d) => '${_two(d.day)}/${_two(d.month)}';
 
+/// Heure avec secondes : « 19:42:05 ».
+String formatTime(DateTime d) =>
+    '${_two(d.hour)}:${_two(d.minute)}:${_two(d.second)}';
+
+const _weekdays = [
+  'lundi',
+  'mardi',
+  'mercredi',
+  'jeudi',
+  'vendredi',
+  'samedi',
+  'dimanche',
+];
+const _months = [
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
+];
+
+/// Date en toutes lettres : « Samedi 17 octobre 2026 ».
+String formatLongDate(DateTime d) {
+  final day = _weekdays[d.weekday - 1];
+  return '${day[0].toUpperCase()}${day.substring(1)} '
+      '${d.day == 1 ? '1er' : d.day} ${_months[d.month - 1]} ${d.year}';
+}
+
 /// Texte en minuscules sans accents, pour la recherche (« Réal » → « real »).
 String normalizeSearch(String s) {
   const from = 'àâäáãåçéèêëíìîïñóòôöõúùûüýÿ';

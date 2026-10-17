@@ -12,6 +12,7 @@ import 'theme.dart';
 import 'utils/format.dart';
 import 'widgets/converter_card.dart';
 import 'widgets/developed_by.dart';
+import 'widgets/live_clock.dart';
 import 'widgets/variation_card.dart';
 
 void main() => runApp(const ConvertisseurApp());
@@ -346,6 +347,8 @@ class _ConverterPageState extends State<ConverterPage> {
                           width: 400,
                           child: Column(
                             children: [
+                              const LiveClock(),
+                              const SizedBox(height: 12),
                               if (banner != null) ...[
                                 banner,
                                 const SizedBox(height: 16),
@@ -374,6 +377,8 @@ class _ConverterPageState extends State<ConverterPage> {
                   constraints: const BoxConstraints(maxWidth: 560),
                   child: Column(
                     children: [
+                      const LiveClock(),
+                      const SizedBox(height: 12),
                       if (banner != null) ...[
                         banner,
                         const SizedBox(height: 16),
