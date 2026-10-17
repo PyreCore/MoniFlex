@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data/currencies.dart';
 import 'services/history_service.dart';
 import 'services/rates_service.dart';
+import 'settings/settings_page.dart';
+import 'settings/theme_controller.dart';
 import 'utils/format.dart';
 import 'widgets/variation_card.dart';
 
@@ -20,60 +22,44 @@ class ConvertisseurApp extends StatefulWidget {
 }
 
 class _ConvertisseurAppState extends State<ConvertisseurApp> {
-  static const _themeKey = 'themeMode';
-
-  ThemeMode _themeMode = ThemeMode.system;
+  final _theme = ThemeController();
 
   @override
   void initState() {
     super.initState();
-    SharedPreferences.getInstance().then((prefs) {
-      final saved = prefs.getString(_themeKey);
-      if (!mounted || saved == null) return;
-      setState(
-        () => _themeMode = ThemeMode.values.firstWhere(
-          (m) => m.name == saved,
-          orElse: () => ThemeMode.system,
-        ),
-      );
-    });
+    _theme.load();
   }
 
-  Future<void> _setThemeMode(ThemeMode mode) async {
-    setState(() => _themeMode = mode);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeKey, mode.name);
+  @override
+  void dispose() {
+    _theme.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MoniFlex',
-      debugShowCheckedModeBanner: false,
-      themeMode: _themeMode,
-      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.teal,
-        brightness: Brightness.dark,
-        useMaterial3: true,
-      ),
-      home: ConverterPage(
-        themeMode: _themeMode,
-        onThemeModeChanged: _setThemeMode,
+    return ValueListenableBuilder(
+      valueListenable: _theme,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'MoniFlex',
+        debugShowCheckedModeBanner: false,
+        themeMode: mode,
+        theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
+        darkTheme: ThemeData(
+          colorSchemeSeed: Colors.teal,
+          brightness: Brightness.dark,
+          useMaterial3: true,
+        ),
+        home: ConverterPage(theme: _theme),
       ),
     );
   }
 }
 
 class ConverterPage extends StatefulWidget {
-  final ThemeMode themeMode;
-  final ValueChanged<ThemeMode> onThemeModeChanged;
+  final ThemeController theme;
 
-  const ConverterPage({
-    super.key,
-    this.themeMode = ThemeMode.system,
-    required this.onThemeModeChanged,
-  });
+  const ConverterPage({super.key, required this.theme});
 
   @override
   State<ConverterPage> createState() => _ConverterPageState();
@@ -230,9 +216,15 @@ class _ConverterPageState extends State<ConverterPage> {
             tooltip: 'Actualiser les taux',
             onPressed: _loading ? null : _refresh,
           ),
-          _ThemeMenu(
-            mode: widget.themeMode,
-            onChanged: widget.onThemeModeChanged,
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Paramètres',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => SettingsPage(theme: widget.theme),
+              ),
+            ),
           ),
         ],
       ),
@@ -374,38 +366,6 @@ class _ConverterPageState extends State<ConverterPage> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Choix du thème : celui du téléphone, clair ou sombre.
-class _ThemeMenu extends StatelessWidget {
-  final ThemeMode mode;
-  final ValueChanged<ThemeMode> onChanged;
-
-  const _ThemeMenu({required this.mode, required this.onChanged});
-
-  static const _options = {
-    ThemeMode.system: ('Comme le téléphone', Icons.brightness_auto),
-    ThemeMode.light: ('Clair', Icons.light_mode),
-    ThemeMode.dark: ('Sombre', Icons.dark_mode),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<ThemeMode>(
-      icon: Icon(_options[mode]!.$2),
-      tooltip: 'Thème',
-      initialValue: mode,
-      onSelected: onChanged,
-      itemBuilder: (_) => [
-        for (final e in _options.entries)
-          CheckedPopupMenuItem(
-            value: e.key,
-            checked: e.key == mode,
-            child: Text(e.value.$1),
-          ),
-      ],
     );
   }
 }

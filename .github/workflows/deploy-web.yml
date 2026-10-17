@@ -30,7 +30,13 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build web --release --base-href /MoniFlex/
+      - name: Build web (version et commit visibles dans Paramètres)
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          flutter build web --release --base-href /MoniFlex/ \
+            --dart-define=APP_VERSION=$VERSION \
+            --dart-define=APP_COMMIT=${GITHUB_SHA::7}
+          cp tool/flutter_service_worker.js build/web/flutter_service_worker.js
 
       - uses: actions/upload-pages-artifact@v3
         with:
