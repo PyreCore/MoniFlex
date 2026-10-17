@@ -20,7 +20,8 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="MoniFlex : convertisseur de devises, avec taux du jour et évolution.">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#009688">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#E9EFEC">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E1513">
   <meta name="author" content="PyreCore">
 
   <!-- iOS meta tags & icons -->
@@ -35,16 +36,66 @@
 
   <title>MoniFlex</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Écran de démarrage : affiché pendant le chargement de l'app, mêmes
+       couleurs de fond que l'app (clair / sombre) pour une transition sans
+       flash. Retiré en fondu à la première image dessinée par Flutter. -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #E9EFEC; }
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      background: #E9EFEC; color: #171D1B;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      transition: opacity .35s ease;
+    }
+    #splash svg { width: 96px; height: 96px; animation: pop .5s ease-out; }
+    #splash .name { font-size: 26px; font-weight: 800; letter-spacing: -.3px; }
+    #splash .by { font-size: 13px; color: #3F4946; }
+    #splash .by b { color: #D32F2F; }
+    #splash .bar {
+      width: 120px; height: 3px; border-radius: 3px; margin-top: 10px;
+      background: rgba(0, 137, 123, .18); overflow: hidden;
+    }
+    #splash .bar::after {
+      content: ""; display: block; width: 40%; height: 100%;
+      background: #00897B; border-radius: 3px;
+      animation: load 1.1s ease-in-out infinite;
+    }
+    @keyframes load { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+    @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+    @media (prefers-color-scheme: dark) {
+      html, body, #splash { background: #0E1513; }
+      #splash { color: #DEE4E1; }
+      #splash .by { color: #BEC9C5; }
+      #splash .by b { color: #FF6B6B; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #splash svg, #splash .bar::after { animation: none; }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="splash" role="status" aria-label="Chargement de MoniFlex">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="10" fill="#00897B"/>
+      <g transform="translate(7 7) scale(0.75)" fill="#FFFFFF">
+        <path d="M12.89 11.1c-1.78-.59-2.64-.96-2.64-1.9 0-1.02 1.11-1.39 1.81-1.39 1.31 0 1.79.99 1.9 1.34l1.58-.67c-.15-.45-.82-1.92-2.54-2.24V5h-2v1.26c-2.48.56-2.49 2.86-2.49 2.96 0 2.27 2.25 2.91 3.35 3.31 1.58.56 2.28 1.07 2.28 2.03 0 1.13-1.05 1.61-1.98 1.61-1.82 0-2.34-1.87-2.4-2.09l-1.66.67c.63 2.19 2.28 2.78 2.9 2.96V19h2v-1.24c.4-.09 2.9-.59 2.9-3.22 0-1.39-.61-2.61-3.01-3.44zM3 21H1v-6h6v2H4.52c1.61 2.41 4.36 4 7.48 4 4.97 0 9-4.03 9-9h2c0 6.08-4.92 11-11 11-3.72 0-7.01-1.85-9-4.67V21zm-2-9C1 5.92 5.92 1 12 1c3.72 0 7.01 1.85 9 4.67V3h2v6h-6V7h2.48C17.87 4.59 15.12 3 12 3c-4.97 0-9 4.03-9 9H1z"/>
+      </g>
+    </svg>
+    <div class="name">MoniFlex</div>
+    <div class="by">par <b>PyreCore</b></div>
+    <div class="bar"></div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', () => {
+      const splash = document.getElementById('splash');
+      if (!splash) return;
+      splash.style.opacity = '0';
+      setTimeout(() => splash.remove(), 400);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
