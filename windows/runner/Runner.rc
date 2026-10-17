@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.mvp21" "\0"
-            VALUE "FileDescription", "convertisseur_devises" "\0"
+            VALUE "FileDescription", "MoniFlex" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "convertisseur_devises" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.mvp21. All rights reserved." "\0"
             VALUE "OriginalFilename", "convertisseur_devises.exe" "\0"
-            VALUE "ProductName", "convertisseur_devises" "\0"
+            VALUE "ProductName", "MoniFlex" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

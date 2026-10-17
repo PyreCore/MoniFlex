@@ -27,7 +27,8 @@ dart run tool/update_fallback_rates.dart
 ```
 
 Le logo est défini dans `tool/icon/logo.svg` ; après une modification,
-régénérer les icônes (web et Android, nécessite Google Chrome) :
+régénérer les icônes de toutes les plateformes (web, Android, iOS, macOS,
+Windows ; nécessite Google Chrome) :
 
 ```sh
 node tool/icon/render_icons.mjs
