@@ -9,8 +9,7 @@ Convertisseur de devises développé par **PyreCore**.
 
 - Conversion entre plus de 160 devises, taux du jour ([open.er-api.com](https://www.exchangerate-api.com)).
 - Fonctionne hors ligne : derniers taux enregistrés, ou taux de référence livrés avec l'app au premier lancement.
-- Cours **en temps réel** façon trading (bougies, intervalles de 1 min à 1 mois) via TradingView.
-- Historique sur 7, 30 ou 90 jours avec variation depuis la veille ([fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api)).
+- Historique sur 7, 30 ou 90 jours (graphique interactif) avec variation depuis la veille ([fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api)).
 - Thème clair, sombre ou celui du téléphone.
 
 ## Développement

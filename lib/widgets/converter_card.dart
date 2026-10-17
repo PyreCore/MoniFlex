@@ -81,18 +81,22 @@ class ConverterCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Divider(height: 1, color: scheme.outlineVariant),
-                  _Row(
-                    label: 'Converti',
-                    code: to,
-                    onPick: onPickTo,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: SelectableText(
-                        formatAmount(result),
-                        style: amountStyle?.copyWith(color: scheme.primary),
-                        maxLines: 1,
+                  // Zone résultat teintée : on distingue d'un coup d'œil ce
+                  // que l'on saisit de ce que l'on obtient.
+                  ColoredBox(
+                    color: resultTint(scheme),
+                    child: _Row(
+                      label: 'Converti',
+                      code: to,
+                      onPick: onPickTo,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: SelectableText(
+                          formatAmount(result),
+                          style: amountStyle?.copyWith(color: scheme.primary),
+                          maxLines: 1,
+                        ),
                       ),
                     ),
                   ),
@@ -103,7 +107,7 @@ class ConverterCard extends StatelessWidget {
                 tooltip: 'Inverser les devises',
                 icon: const Icon(Icons.swap_vert),
                 style: IconButton.styleFrom(
-                  side: BorderSide(color: scheme.surfaceContainerLow, width: 4),
+                  side: BorderSide(color: cardBackground(scheme), width: 4),
                 ),
               ),
             ],
@@ -111,7 +115,12 @@ class ConverterCard extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-            color: scheme.surfaceContainer,
+            decoration: BoxDecoration(
+              color: resultTint(scheme),
+              border: Border(
+                top: BorderSide(color: scheme.primary.withValues(alpha: 0.15)),
+              ),
+            ),
             child: Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,

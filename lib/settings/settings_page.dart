@@ -59,8 +59,7 @@ class SettingsPage extends StatelessWidget {
             title: const Text('Sources des taux'),
             subtitle: Text(
               'Taux du jour : open.er-api.com\n'
-              'Historique : fawazahmed0/exchange-api\n'
-              'Temps réel : TradingView',
+              'Historique : fawazahmed0/exchange-api',
               style: t.textTheme.bodySmall,
             ),
             isThreeLine: true,

@@ -80,7 +80,6 @@ class _ConverterPageState extends State<ConverterPage> {
   RateHistory? _history;
   bool _historyLoading = false;
   int _historyDays = historyPeriods.first;
-  bool _liveChart = true;
 
   @override
   void initState() {
@@ -128,7 +127,6 @@ class _ConverterPageState extends State<ConverterPage> {
     setState(() {
       _from = prefs.getString('from') ?? _from;
       _to = prefs.getString('to') ?? _to;
-      _liveChart = prefs.getBool('liveChart') ?? _liveChart;
       _ensureKnownCurrencies();
     });
   }
@@ -149,7 +147,6 @@ class _ConverterPageState extends State<ConverterPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('from', _from);
     await prefs.setString('to', _to);
-    await prefs.setBool('liveChart', _liveChart);
   }
 
   Future<void> _loadRates() async {
@@ -298,19 +295,14 @@ class _ConverterPageState extends State<ConverterPage> {
       onSwap: _swap,
     );
 
-    VariationCard variation({double liveHeight = 420}) => VariationCard(
+    VariationCard variation({double chartHeight = 220}) => VariationCard(
       from: _from,
       to: _to,
       history: _history,
       loading: _historyLoading,
       days: _historyDays,
       onDaysChanged: _setHistoryDays,
-      live: _liveChart,
-      onLiveChanged: (live) {
-        setState(() => _liveChart = live);
-        _savePrefs();
-      },
-      liveHeight: liveHeight,
+      chartHeight: chartHeight,
     );
 
     final footer = Column(
@@ -365,7 +357,7 @@ class _ConverterPageState extends State<ConverterPage> {
                           ),
                         ),
                         const SizedBox(width: 24),
-                        Expanded(child: variation(liveHeight: 520)),
+                        Expanded(child: variation(chartHeight: 300)),
                       ],
                     ),
                   ),
