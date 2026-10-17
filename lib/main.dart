@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/currencies.dart';
+import 'services/history_service.dart';
 import 'services/rates_service.dart';
+import 'utils/format.dart';
+import 'widgets/variation_card.dart';
 
 void main() => runApp(const ConvertisseurApp());
 
@@ -34,8 +39,13 @@ class ConverterPage extends StatefulWidget {
 }
 
 class _ConverterPageState extends State<ConverterPage> {
+  /// Fréquence d'actualisation automatique pendant que l'app est ouverte.
+  static const _autoRefresh = Duration(minutes: 15);
+
   final _service = RatesService();
+  final _historyService = HistoryService();
   final _amountController = TextEditingController(text: '1');
+  Timer? _timer;
 
   ExchangeRates? _rates;
   String? _error;
@@ -43,18 +53,48 @@ class _ConverterPageState extends State<ConverterPage> {
   String _from = 'EUR';
   String _to = 'XAF';
 
+  RateHistory? _history;
+  bool _historyLoading = false;
+  int _historyDays = historyPeriods.first;
+
   @override
   void initState() {
     super.initState();
     _loadPrefs();
-    _loadRates();
+    _refresh();
+    _timer = Timer.periodic(_autoRefresh, (_) => _refresh());
     _amountController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _amountController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refresh() => Future.wait([_loadRates(), _loadHistory()]);
+
+  Future<void> _loadHistory() async {
+    final days = _historyDays;
+    setState(() => _historyLoading = true);
+    try {
+      final history = await _historyService.fetch(days);
+      // Ignore une réponse arrivée après un changement de période.
+      if (!mounted || days != _historyDays) return;
+      setState(() => _history = history);
+    } catch (_) {
+      // Hors ligne : on garde l'historique déjà affiché, s'il y en a un.
+    } finally {
+      if (mounted && days == _historyDays) {
+        setState(() => _historyLoading = false);
+      }
+    }
+  }
+
+  void _setHistoryDays(int days) {
+    setState(() => _historyDays = days);
+    _loadHistory();
   }
 
   Future<void> _loadPrefs() async {
@@ -119,22 +159,6 @@ class _ConverterPageState extends State<ConverterPage> {
     _savePrefs();
   }
 
-  String _format(double value) {
-    if (value == 0) return '0';
-    final decimals = value.abs() >= 1 ? 2 : 6;
-    final parts = value.toStringAsFixed(decimals).split('.');
-    final intPart = parts[0].replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'),
-      (m) => '${m[1]} ',
-    );
-    return parts.length > 1 ? '$intPart,${parts[1]}' : intPart;
-  }
-
-  String _formatDate(DateTime d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(d.day)}/${two(d.month)}/${d.year} à ${two(d.hour)}h${two(d.minute)}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,7 +168,7 @@ class _ConverterPageState extends State<ConverterPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualiser les taux',
-            onPressed: _loading ? null : _loadRates,
+            onPressed: _loading ? null : _refresh,
           ),
         ],
       ),
@@ -167,10 +191,7 @@ class _ConverterPageState extends State<ConverterPage> {
               const SizedBox(height: 16),
               Text(_error ?? 'Erreur inconnue', textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _loadRates,
-                child: const Text('Réessayer'),
-              ),
+              FilledButton(onPressed: _refresh, child: const Text('Réessayer')),
             ],
           ),
         ),
@@ -183,12 +204,12 @@ class _ConverterPageState extends State<ConverterPage> {
     final theme = Theme.of(context);
 
     return RefreshIndicator(
-      onRefresh: _loadRates,
+      onRefresh: _refresh,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (rates.source == RatesSource.bundled) ...[
-            _FallbackBanner(date: _formatDate(rates.updatedAt)),
+            _FallbackBanner(date: formatDate(rates.updatedAt)),
             const SizedBox(height: 16),
           ],
           TextField(
@@ -229,27 +250,36 @@ class _ConverterPageState extends State<ConverterPage> {
               child: Column(
                 children: [
                   Text(
-                    '${_format(_amount)} $_from =',
+                    '${formatAmount(_amount)} $_from =',
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   FittedBox(
                     child: Text(
-                      '${_format(result)} $_to',
+                      '${formatAmount(result)} $_to',
                       style: theme.textTheme.displaySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text('1 $_from = ${_format(unitRate)} $_to'),
+                  Text('1 $_from = ${formatAmount(unitRate)} $_to'),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
+          VariationCard(
+            from: _from,
+            to: _to,
+            history: _history,
+            loading: _historyLoading,
+            days: _historyDays,
+            onDaysChanged: _setHistoryDays,
+          ),
+          const SizedBox(height: 16),
           Text(
-            'Taux mis à jour le ${_formatDate(rates.updatedAt)}'
+            'Taux mis à jour le ${formatDate(rates.updatedAt)}'
             '${rates.source == RatesSource.cache ? ' (hors ligne)' : ''}',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
