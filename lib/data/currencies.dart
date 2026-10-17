@@ -29,7 +29,9 @@ const Map<String, String> currencyNames = {
   'CAD': 'Dollar canadien',
   'CDF': 'Franc congolais',
   'CHF': 'Franc suisse',
+  'CLF': 'Unité de compte chilienne (UF)',
   'CLP': 'Peso chilien',
+  'CNH': 'Yuan chinois (offshore)',
   'CNY': 'Yuan chinois',
   'COP': 'Peso colombien',
   'CRC': 'Colón costaricien',
@@ -46,8 +48,10 @@ const Map<String, String> currencyNames = {
   'EUR': 'Euro',
   'FJD': 'Dollar fidjien',
   'FKP': 'Livre des Malouines',
+  'FOK': 'Couronne féroïenne',
   'GBP': 'Livre sterling',
   'GEL': 'Lari géorgien',
+  'GGP': 'Livre de Guernesey',
   'GHS': 'Cedi ghanéen',
   'GIP': 'Livre de Gibraltar',
   'GMD': 'Dalasi gambien',
@@ -61,16 +65,19 @@ const Map<String, String> currencyNames = {
   'HUF': 'Forint hongrois',
   'IDR': 'Roupie indonésienne',
   'ILS': 'Shekel israélien',
+  'IMP': 'Livre mannoise',
   'INR': 'Roupie indienne',
   'IQD': 'Dinar irakien',
   'IRR': 'Rial iranien',
   'ISK': 'Couronne islandaise',
+  'JEP': 'Livre de Jersey',
   'JMD': 'Dollar jamaïcain',
   'JOD': 'Dinar jordanien',
   'JPY': 'Yen japonais',
   'KES': 'Shilling kényan',
   'KGS': 'Som kirghize',
   'KHR': 'Riel cambodgien',
+  'KID': 'Dollar des Kiribati',
   'KMF': 'Franc comorien',
   'KRW': 'Won sud-coréen',
   'KWD': 'Dinar koweïtien',
@@ -137,6 +144,7 @@ const Map<String, String> currencyNames = {
   'TOP': 'Paʻanga tongien',
   'TRY': 'Livre turque',
   'TTD': 'Dollar de Trinité-et-Tobago',
+  'TVD': 'Dollar tuvaluan',
   'TWD': 'Dollar taïwanais',
   'TZS': 'Shilling tanzanien',
   'UAH': 'Hryvnia ukrainienne',
@@ -150,13 +158,15 @@ const Map<String, String> currencyNames = {
   'WST': 'Tala samoan',
   'XAF': 'Franc CFA (BEAC)',
   'XCD': 'Dollar des Caraïbes orientales',
+  'XCG': 'Florin caribéen',
   'XDR': 'Droits de tirage spéciaux (FMI)',
   'XOF': 'Franc CFA (BCEAO)',
   'XPF': 'Franc CFP',
   'YER': 'Rial yéménite',
   'ZAR': 'Rand sud-africain',
   'ZMW': 'Kwacha zambien',
-  'ZWL': 'Dollar zimbabwéen',
+  'ZWG': 'Zimbabwe Gold (ZiG)',
+  'ZWL': 'Dollar zimbabwéen (ancien)',
 };
 
 String currencyName(String code) => currencyNames[code] ?? code;
@@ -169,12 +179,14 @@ String currencyFlag(String code) {
     'XAF': '🌍',
     'XOF': '🌍',
     'XCD': '🌎',
+    'XCG': '🇨🇼',
     'XPF': '🌏',
     'XDR': '🏦',
     'ANG': '🇨🇼',
   };
   if (special.containsKey(code)) return special[code]!;
-  if (code.length < 2) return '🏳️';
+  // Codes en X : devises supranationales, sans pays (pas de drapeau).
+  if (code.length < 2 || code.startsWith('X')) return '🌐';
   final cc = code.substring(0, 2).toUpperCase();
   return String.fromCharCodes(cc.codeUnits.map((c) => 0x1F1E6 + c - 65));
 }

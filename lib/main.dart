@@ -103,7 +103,20 @@ class _ConverterPageState extends State<ConverterPage> {
     setState(() {
       _from = prefs.getString('from') ?? _from;
       _to = prefs.getString('to') ?? _to;
+      _ensureKnownCurrencies();
     });
+  }
+
+  /// Une devise mémorisée qui n'existe plus dans les taux (retirée par
+  /// l'API) donnerait une conversion à 0 : on revient aux devises par défaut.
+  void _ensureKnownCurrencies() {
+    final rates = _rates?.rates;
+    if (rates == null) return;
+    String pick(String code, String fallback) => rates.containsKey(code)
+        ? code
+        : (rates.containsKey(fallback) ? fallback : rates.keys.first);
+    _from = pick(_from, 'EUR');
+    _to = pick(_to, 'XAF');
   }
 
   Future<void> _savePrefs() async {
@@ -120,7 +133,10 @@ class _ConverterPageState extends State<ConverterPage> {
     try {
       final rates = await _service.fetchRates();
       if (!mounted) return;
-      setState(() => _rates = rates);
+      setState(() {
+        _rates = rates;
+        _ensureKnownCurrencies();
+      });
     } catch (e) {
       if (!mounted) return;
       setState(
@@ -216,7 +232,12 @@ class _ConverterPageState extends State<ConverterPage> {
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              // Chiffres et un seul séparateur décimal (« 1,5,3 » refusé).
+              TextInputFormatter.withFunction(
+                (old, value) =>
+                    RegExp(r'^\d*[.,]?\d*$').hasMatch(value.text) ? value : old,
+              ),
+              LengthLimitingTextInputFormatter(15),
             ],
             style: theme.textTheme.headlineSmall,
             decoration: const InputDecoration(
@@ -370,12 +391,12 @@ class _CurrencyPickerState extends State<CurrencyPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final q = _query.toLowerCase();
+    final q = normalizeSearch(_query.trim());
     final filtered = widget.codes
         .where(
           (c) =>
               c.toLowerCase().contains(q) ||
-              currencyName(c).toLowerCase().contains(q),
+              normalizeSearch(currencyName(c)).contains(q),
         )
         .toList();
 
@@ -393,6 +414,11 @@ class _CurrencyPickerState extends State<CurrencyPicker> {
             onChanged: (v) => setState(() => _query = v),
           ),
         ),
+        if (filtered.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Aucune devise trouvée.'),
+          ),
         Expanded(
           child: ListView.builder(
             itemCount: filtered.length,

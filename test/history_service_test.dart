@@ -79,8 +79,13 @@ void main() {
         now: () => _now,
       );
       final dates = (await service.fetch(90)).days.keys.toList();
-      expect(dates.length, inInclusiveRange(30, 32));
-      for (final d in dates.take(dates.length - 1)) {
+      expect(dates.length, inInclusiveRange(31, 33));
+      // La veille et l'avant-veille sont toujours là (variation sur 24 h).
+      expect(dates, contains(DateTime.utc(2026, 10, 16)));
+      expect(dates, contains(DateTime.utc(2026, 10, 15)));
+      for (final d in dates.where(
+        (d) => d.isBefore(DateTime.utc(2026, 10, 15)),
+      )) {
         expect(
           (d.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay) % 3,
           0,
@@ -104,6 +109,33 @@ void main() {
       calls = 0;
       await service.fetch(7);
       expect(calls, 1);
+    },
+  );
+
+  test('« depuis la veille » exige deux jours consécutifs', () {
+    final s = [
+      RatePoint(DateTime.utc(2026, 10, 14), 1.0),
+      RatePoint(DateTime.utc(2026, 10, 17), 1.1),
+    ];
+    expect(RateHistory.lastChange(s), isNull);
+    expect(RateHistory.periodChange(s), closeTo(10, 1e-9));
+  });
+
+  test(
+    'une réponse illisible ne fait pas échouer tout l\'historique',
+    () async {
+      final service = HistoryService(
+        client: MockClient((r) async {
+          if (r.url.toString().contains('2026-10-12')) {
+            return http.Response('{pas du json', 200);
+          }
+          return _fakeApi(r);
+        }),
+        now: () => _now,
+      );
+      final dates = (await service.fetch(7)).days.keys;
+      expect(dates.length, 7);
+      expect(dates, isNot(contains(DateTime.utc(2026, 10, 12))));
     },
   );
 

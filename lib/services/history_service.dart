@@ -27,9 +27,14 @@ class RateHistory {
         RatePoint(e.key, e.value[to]! / e.value[from]!),
   ];
 
-  /// Variation en % entre le dernier point et celui qui le précède.
-  static double? lastChange(List<RatePoint> s) =>
-      s.length < 2 ? null : _percent(s[s.length - 2].value, s.last.value);
+  /// Variation en % depuis la veille : null si les deux derniers points ne
+  /// sont pas des jours consécutifs (jour manquant).
+  static double? lastChange(List<RatePoint> s) {
+    if (s.length < 2) return null;
+    final prev = s[s.length - 2];
+    if (s.last.date.difference(prev.date).inDays != 1) return null;
+    return _percent(prev.value, s.last.value);
+  }
 
   /// Variation en % entre le premier et le dernier point.
   static double? periodChange(List<RatePoint> s) =>
@@ -51,8 +56,9 @@ class HistoryService {
       _now = now ?? DateTime.now;
 
   /// Taux des [days] derniers jours. Au-delà de 30 jours, un point tous les
-  /// 3 jours. Les jours passés sont mis en cache (ils ne changent plus) ;
-  /// seul le jour courant est retéléchargé.
+  /// 3 jours (plus les 2 derniers jours, pour la variation depuis la veille).
+  /// Les jours passés sont mis en cache (ils ne changent plus) ; seul le jour
+  /// courant est retéléchargé.
   Future<RateHistory> fetch(int days) async {
     final prefs = await SharedPreferences.getInstance();
     final now = _now().toUtc();
@@ -61,7 +67,7 @@ class HistoryService {
 
     final dates = <DateTime>[
       for (var i = days; i > 0; i--)
-        if (_epochDay(today.subtract(Duration(days: i))) % step == 0)
+        if (i <= 2 || _epochDay(today.subtract(Duration(days: i))) % step == 0)
           today.subtract(Duration(days: i)),
     ];
 
@@ -88,16 +94,24 @@ class HistoryService {
     final cached = prefs.getString(key);
     if (cached != null) return (date, _decodeCache(cached));
 
-    final body = await _get(_iso(date));
-    if (body == null) return null;
-    final rates = _parse(body).$2;
-    await prefs.setString(key, jsonEncode(rates));
-    return (date, rates);
+    final parsed = _tryParse(await _get(_iso(date)));
+    if (parsed == null) return null;
+    await prefs.setString(key, jsonEncode(parsed.$2));
+    return (date, parsed.$2);
   }
 
-  Future<(DateTime, Map<String, double>)?> _latest() async {
-    final body = await _get('latest');
-    return body == null ? null : _parse(body);
+  Future<(DateTime, Map<String, double>)?> _latest() async =>
+      _tryParse(await _get('latest'));
+
+  /// Une réponse illisible compte comme un jour manquant, sans faire échouer
+  /// tout l'historique.
+  (DateTime, Map<String, double>)? _tryParse(String? body) {
+    if (body == null) return null;
+    try {
+      return _parse(body);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Essaie le CDN principal puis le miroir.

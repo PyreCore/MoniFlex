@@ -9,6 +9,10 @@ import '../utils/format.dart';
 /// Périodes proposées, en jours.
 const historyPeriods = [7, 30, 90];
 
+/// Variation (en %) en dessous de laquelle une paire est dite stable : parité
+/// fixe (EUR/XAF) ou simples arrondis de la source.
+const _stableThreshold = 0.01;
+
 /// Variation récente et courbe d'évolution de 1 [from] en [to].
 class VariationCard extends StatelessWidget {
   final String from;
@@ -32,6 +36,12 @@ class VariationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final series = history?.series(from, to) ?? const <RatePoint>[];
+    final daily = RateHistory.lastChange(series);
+    // Période réellement couverte : peut différer de [days] si le chargement
+    // de la période choisie a échoué et que l'ancien historique est affiché.
+    final span = series.length < 2
+        ? 0
+        : series.last.date.difference(series.first.date).inDays;
 
     return Card(
       child: Padding(
@@ -72,7 +82,9 @@ class VariationCard extends StatelessWidget {
                   child: Text(
                     loading
                         ? 'Chargement de l\'historique…'
-                        : 'Historique indisponible (connexion requise).',
+                        : history == null
+                        ? 'Historique indisponible (connexion requise).'
+                        : 'Pas d\'historique disponible pour cette paire.',
                     style: theme.textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -83,12 +95,10 @@ class VariationCard extends StatelessWidget {
                 spacing: 24,
                 runSpacing: 8,
                 children: [
+                  if (daily != null)
+                    _Change(label: 'Depuis la veille', value: daily),
                   _Change(
-                    label: 'Depuis la veille',
-                    value: RateHistory.lastChange(series)!,
-                  ),
-                  _Change(
-                    label: 'Sur $days jours',
+                    label: 'Sur $span jour${span > 1 ? 's' : ''}',
                     value: RateHistory.periodChange(series)!,
                   ),
                 ],
@@ -121,8 +131,7 @@ class _Change extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    // Moins de 0,005 % : considéré comme stable (ex. EUR/XAF, parité fixe).
-    final stable = value.abs() < 0.005;
+    final stable = value.abs() < _stableThreshold;
     final up = value > 0;
     final color = stable
         ? theme.colorScheme.onSurfaceVariant
@@ -172,9 +181,9 @@ class _Chart extends StatelessWidget {
     var minY = values.reduce(math.min);
     var maxY = values.reduce(math.max);
     final mean = (minY + maxY) / 2;
-    // Écart < 0,01 % (parité fixe, arrondis de la source) : ligne plate,
-    // sinon de simples arrondis seraient étirés sur toute la hauteur.
-    if ((maxY - minY) / mean < 1e-4) {
+    // Paire stable : ligne plate, sinon de simples arrondis seraient étirés
+    // sur toute la hauteur.
+    if ((maxY - minY) / mean * 100 < _stableThreshold) {
       values = List.filled(values.length, mean);
       minY = mean * 0.99;
       maxY = mean * 1.01;
@@ -187,13 +196,17 @@ class _Chart extends StatelessWidget {
     // Assez de décimales pour que les libellés de l'axe soient distincts.
     final decimals = (1 - (math.log(interval) / math.ln10).floor()).clamp(0, 8);
 
-    final last = series.length - 1;
+    // Abscisse = jours écoulés depuis le premier point : les écarts entre
+    // dates (1 ou 3 jours, jour manquant) sont respectés.
+    final first = series.first.date;
+    double x(RatePoint p) => p.date.difference(first).inDays.toDouble();
+    final lastX = x(series.last);
     final labelStyle = theme.textTheme.labelSmall?.copyWith(color: muted);
 
     return LineChart(
       LineChartData(
         minX: 0,
-        maxX: last.toDouble(),
+        maxX: lastX,
         minY: minY,
         maxY: maxY,
         borderData: FlBorderData(show: false),
@@ -228,20 +241,15 @@ class _Chart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 24,
-              interval: 1,
-              getTitlesWidget: (v, meta) {
-                final i = v.toInt();
-                if (v != i || (i != 0 && i != last && i != last ~/ 2)) {
-                  return const SizedBox.shrink();
-                }
-                return SideTitleWidget(
-                  meta: meta,
-                  child: Text(
-                    formatShortDate(series[i].date),
-                    style: labelStyle,
-                  ),
-                );
-              },
+              // Début, milieu et fin de la période.
+              interval: lastX / 2,
+              getTitlesWidget: (v, meta) => SideTitleWidget(
+                meta: meta,
+                child: Text(
+                  formatShortDate(first.add(Duration(days: v.round()))),
+                  style: labelStyle,
+                ),
+              ),
             ),
           ),
         ),
@@ -286,7 +294,7 @@ class _Chart extends StatelessWidget {
           LineChartBarData(
             spots: [
               for (var i = 0; i < series.length; i++)
-                FlSpot(i.toDouble(), values[i]),
+                FlSpot(x(series[i]), values[i]),
             ],
             color: line,
             barWidth: 2,

@@ -1,7 +1,12 @@
+import 'dart:math' as math;
+
 /// Montant au format français : espace pour les milliers, virgule décimale.
 String formatAmount(double value) {
   if (value == 0) return '0';
-  final decimals = value.abs() >= 1 ? 2 : 6;
+  // Sous 1 : au moins 4 chiffres significatifs (ex. 0,000007312).
+  final decimals = value.abs() >= 1
+      ? 2
+      : (3 - (math.log(value.abs()) / math.ln10).floor()).clamp(6, 12);
   final parts = value.toStringAsFixed(decimals).split('.');
   final intPart = parts[0].replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -22,3 +27,21 @@ String formatDate(DateTime d) =>
     '${_two(d.day)}/${_two(d.month)}/${d.year} à ${_two(d.hour)}h${_two(d.minute)}';
 
 String formatShortDate(DateTime d) => '${_two(d.day)}/${_two(d.month)}';
+
+/// Texte en minuscules sans accents, pour la recherche (« Réal » → « real »).
+String normalizeSearch(String s) {
+  const from = 'àâäáãåçéèêëíìîïñóòôöõúùûüýÿ';
+  const to = 'aaaaaaceeeeiiiinooooouuuuyy';
+  final buffer = StringBuffer();
+  for (final ch in s.toLowerCase().split('')) {
+    if (ch == 'œ') {
+      buffer.write('oe');
+    } else if (ch == 'æ') {
+      buffer.write('ae');
+    } else {
+      final i = from.indexOf(ch);
+      buffer.write(i >= 0 ? to[i] : ch);
+    }
+  }
+  return buffer.toString();
+}
