@@ -11,6 +11,7 @@ import 'settings/theme_controller.dart';
 import 'theme.dart';
 import 'utils/format.dart';
 import 'widgets/converter_card.dart';
+import 'widgets/developed_by.dart';
 import 'widgets/variation_card.dart';
 
 void main() => runApp(const ConvertisseurApp());
@@ -315,8 +316,7 @@ class _ConverterPageState extends State<ConverterPage> {
           style: muted,
         ),
         const SizedBox(height: 4),
-        Text(
-          'Application développée par PyreCore',
+        DevelopedBy(
           textAlign: TextAlign.center,
           style: muted?.copyWith(fontWeight: FontWeight.w600),
         ),

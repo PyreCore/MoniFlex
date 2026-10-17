@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/developed_by.dart';
 import 'theme_controller.dart';
 
 /// Version affichée : numéro de l'app et commit, fournis au build
@@ -50,10 +51,7 @@ class SettingsPage extends StatelessWidget {
             title: Text('MoniFlex'),
             subtitle: Text('Version $appVersion ($appCommit)'),
           ),
-          const ListTile(
-            leading: Icon(Icons.code),
-            title: Text('Application développée par PyreCore'),
-          ),
+          const ListTile(leading: Icon(Icons.code), title: DevelopedBy()),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('Sources des taux'),
