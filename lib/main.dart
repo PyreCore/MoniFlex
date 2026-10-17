@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/currencies.dart';
@@ -9,7 +8,9 @@ import 'services/history_service.dart';
 import 'services/rates_service.dart';
 import 'settings/settings_page.dart';
 import 'settings/theme_controller.dart';
+import 'theme.dart';
 import 'utils/format.dart';
+import 'widgets/converter_card.dart';
 import 'widgets/variation_card.dart';
 
 void main() => runApp(const ConvertisseurApp());
@@ -44,12 +45,8 @@ class _ConvertisseurAppState extends State<ConvertisseurApp> {
         title: 'MoniFlex',
         debugShowCheckedModeBanner: false,
         themeMode: mode,
-        theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-        darkTheme: ThemeData(
-          colorSchemeSeed: Colors.teal,
-          brightness: Brightness.dark,
-          useMaterial3: true,
-        ),
+        theme: buildTheme(Brightness.light),
+        darkTheme: buildTheme(Brightness.dark),
         home: ConverterPage(theme: _theme),
       ),
     );
@@ -207,9 +204,35 @@ class _ConverterPageState extends State<ConverterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Convertisseur de devises'),
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.currency_exchange,
+                size: 18,
+                color: theme.colorScheme.onPrimary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'MoniFlex',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -217,7 +240,7 @@ class _ConverterPageState extends State<ConverterPage> {
             onPressed: _loading ? null : _refresh,
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined),
             tooltip: 'Paramètres',
             onPressed: () => Navigator.push(
               context,
@@ -226,6 +249,7 @@ class _ConverterPageState extends State<ConverterPage> {
               ),
             ),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: _buildBody(),
@@ -255,116 +279,125 @@ class _ConverterPageState extends State<ConverterPage> {
     }
 
     final rates = _rates!;
-    final result = rates.convert(_amount, _from, _to);
-    final unitRate = rates.convert(1, _from, _to);
     final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
+    final converter = ConverterCard(
+      amountController: _amountController,
+      from: _from,
+      to: _to,
+      result: rates.convert(_amount, _from, _to),
+      unitRate: rates.convert(1, _from, _to),
+      dailyChange: RateHistory.lastChange(
+        _history?.series(_from, _to) ?? const [],
+      ),
+      onPickFrom: () => _pickCurrency(true),
+      onPickTo: () => _pickCurrency(false),
+      onSwap: _swap,
+    );
+
+    VariationCard variation({double liveHeight = 420}) => VariationCard(
+      from: _from,
+      to: _to,
+      history: _history,
+      loading: _historyLoading,
+      days: _historyDays,
+      onDaysChanged: _setHistoryDays,
+      live: _liveChart,
+      onLiveChanged: (live) {
+        setState(() => _liveChart = live);
+        _savePrefs();
+      },
+      liveHeight: liveHeight,
+    );
+
+    final footer = Column(
+      children: [
+        Text(
+          'Taux du ${formatDate(rates.updatedAt)}'
+          '${rates.source == RatesSource.cache ? ' (hors ligne)' : ''}'
+          ' · ${rates.codes.length} devises',
+          textAlign: TextAlign.center,
+          style: muted,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Application développée par PyreCore',
+          textAlign: TextAlign.center,
+          style: muted?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+
+    final banner = rates.source == RatesSource.bundled
+        ? _FallbackBanner(date: formatDate(rates.updatedAt))
+        : null;
 
     return RefreshIndicator(
       onRefresh: _refresh,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (rates.source == RatesSource.bundled) ...[
-            _FallbackBanner(date: formatDate(rates.updatedAt)),
-            const SizedBox(height: 16),
-          ],
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              // Chiffres et un seul séparateur décimal (« 1,5,3 » refusé).
-              TextInputFormatter.withFunction(
-                (old, value) =>
-                    RegExp(r'^\d*[.,]?\d*$').hasMatch(value.text) ? value : old,
-              ),
-              LengthLimitingTextInputFormatter(15),
-            ],
-            style: theme.textTheme.headlineSmall,
-            decoration: const InputDecoration(
-              labelText: 'Montant',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _CurrencyTile(
-            label: 'De',
-            code: _from,
-            onTap: () => _pickCurrency(true),
-          ),
-          Center(
-            child: IconButton.filledTonal(
-              icon: const Icon(Icons.swap_vert),
-              tooltip: 'Inverser',
-              onPressed: _swap,
-            ),
-          ),
-          _CurrencyTile(
-            label: 'Vers',
-            code: _to,
-            onTap: () => _pickCurrency(false),
-          ),
-          const SizedBox(height: 24),
-          Card(
-            color: theme.colorScheme.primaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Text(
-                    '${formatAmount(_amount)} $_from =',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  FittedBox(
-                    child: Text(
-                      '${formatAmount(result)} $_to',
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Ordinateur / tablette : convertisseur à gauche, graphique à droite.
+          if (constraints.maxWidth >= 900) {
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1180),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 400,
+                          child: Column(
+                            children: [
+                              if (banner != null) ...[
+                                banner,
+                                const SizedBox(height: 16),
+                              ],
+                              converter,
+                              const SizedBox(height: 20),
+                              footer,
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(child: variation(liveHeight: 520)),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text('1 $_from = ${formatAmount(unitRate)} $_to'),
-                ],
+                ),
+              ],
+            );
+          }
+          // Téléphone : une colonne centrée, largeur de lecture confortable.
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    children: [
+                      if (banner != null) ...[
+                        banner,
+                        const SizedBox(height: 16),
+                      ],
+                      converter,
+                      const SizedBox(height: 16),
+                      variation(),
+                      const SizedBox(height: 20),
+                      footer,
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          VariationCard(
-            from: _from,
-            to: _to,
-            history: _history,
-            loading: _historyLoading,
-            days: _historyDays,
-            onDaysChanged: _setHistoryDays,
-            live: _liveChart,
-            onLiveChanged: (live) {
-              setState(() => _liveChart = live);
-              _savePrefs();
-            },
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Taux mis à jour le ${formatDate(rates.updatedAt)}'
-            '${rates.source == RatesSource.cache ? ' (hors ligne)' : ''}',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall,
-          ),
-          Text(
-            '${rates.codes.length} devises disponibles',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Application développée par PyreCore',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -395,31 +428,6 @@ class _FallbackBanner extends StatelessWidget {
           'Connecte-toi pour les mettre à jour.',
           style: TextStyle(color: fg),
         ),
-      ),
-    );
-  }
-}
-
-class _CurrencyTile extends StatelessWidget {
-  final String label;
-  final String code;
-  final VoidCallback onTap;
-
-  const _CurrencyTile({
-    required this.label,
-    required this.code,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        onTap: onTap,
-        leading: Text(currencyFlag(code), style: const TextStyle(fontSize: 32)),
-        title: Text('$label : $code'),
-        subtitle: Text(currencyName(code)),
-        trailing: const Icon(Icons.arrow_drop_down),
       ),
     );
   }

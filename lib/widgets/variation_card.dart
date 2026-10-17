@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../services/history_service.dart';
+import '../theme.dart';
 import '../utils/format.dart';
 import 'live_chart.dart';
 
@@ -14,7 +15,8 @@ const historyPeriods = [7, 30, 90];
 /// fixe (EUR/XAF) ou simples arrondis de la source.
 const _stableThreshold = 0.01;
 
-/// Variation récente et courbe d'évolution de 1 [from] en [to].
+/// Graphique d'évolution de 1 [from] en [to] : cours en temps réel ou
+/// historique quotidien.
 class VariationCard extends StatelessWidget {
   final String from;
   final String to;
@@ -27,6 +29,9 @@ class VariationCard extends StatelessWidget {
   final bool live;
   final ValueChanged<bool> onLiveChanged;
 
+  /// Hauteur du graphique temps réel (plus grand sur ordinateur).
+  final double liveHeight;
+
   const VariationCard({
     super.key,
     required this.from,
@@ -37,11 +42,13 @@ class VariationCard extends StatelessWidget {
     required this.onDaysChanged,
     required this.live,
     required this.onLiveChanged,
+    this.liveHeight = 420,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
     final series = history?.series(from, to) ?? const <RatePoint>[];
     final daily = RateHistory.lastChange(series);
     // Période réellement couverte : peut différer de [days] si le chargement
@@ -49,22 +56,36 @@ class VariationCard extends StatelessWidget {
     final span = series.length < 2
         ? 0
         : series.last.date.difference(series.first.date).inDays;
+    final showLive = liveChartSupported && live;
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Évolution 1 $from → $to',
-                    style: theme.textTheme.titleMedium,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Évolution',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '$from / $to',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: muted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                if (loading)
+                if (loading && !showLive)
                   const SizedBox.square(
                     dimension: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
@@ -72,18 +93,18 @@ class VariationCard extends StatelessWidget {
               ],
             ),
             if (liveChartSupported) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               SegmentedButton<bool>(
                 segments: const [
                   ButtonSegment(
                     value: true,
                     label: Text('Temps réel'),
-                    icon: Icon(Icons.candlestick_chart),
+                    icon: Icon(Icons.candlestick_chart, size: 18),
                   ),
                   ButtonSegment(
                     value: false,
                     label: Text('Historique'),
-                    icon: Icon(Icons.show_chart),
+                    icon: Icon(Icons.show_chart, size: 18),
                   ),
                 ],
                 selected: {live},
@@ -91,12 +112,8 @@ class VariationCard extends StatelessWidget {
                 onSelectionChanged: (s) => onLiveChanged(s.first),
               ),
             ],
-            if (liveChartSupported && live) ...[
-              if (daily != null) ...[
-                const SizedBox(height: 16),
-                _Change(label: 'Depuis la veille', value: daily),
-              ],
-              const SizedBox(height: 16),
+            if (showLive) ...[
+              const SizedBox(height: 14),
               if (from == to)
                 const SizedBox(
                   height: 160,
@@ -105,17 +122,18 @@ class VariationCard extends StatelessWidget {
                   ),
                 )
               else
-                // Bougies 1 min par défaut ; l'intervalle se change dans la
-                // barre du graphique.
-                SizedBox(
-                  height: 420,
-                  child: LiveChart(from: from, to: to),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    height: liveHeight,
+                    child: LiveChart(from: from, to: to),
+                  ),
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
-                'Cours en direct fournis par TradingView. Sans connexion, '
+                'Cours en direct fournis par TradingView. Hors connexion, '
                 'utilise l\'onglet Historique.',
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
               ),
             ] else ...[
               const SizedBox(height: 12),
@@ -139,27 +157,27 @@ class VariationCard extends StatelessWidget {
                           : history == null
                           ? 'Historique indisponible (connexion requise).'
                           : 'Pas d\'historique disponible pour cette paire.',
-                      style: theme.textTheme.bodyMedium,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                       textAlign: TextAlign.center,
                     ),
                   ),
                 )
               else ...[
                 Wrap(
-                  spacing: 24,
+                  spacing: 8,
                   runSpacing: 8,
                   children: [
                     if (daily != null)
-                      _Change(label: 'Depuis la veille', value: daily),
-                    _Change(
-                      label: 'Sur $span jour${span > 1 ? 's' : ''}',
+                      ChangeBadge(value: daily, suffix: ' 24 h'),
+                    ChangeBadge(
                       value: RateHistory.periodChange(series)!,
+                      suffix: ' $span j',
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 180,
+                  height: 200,
                   // Marge à droite pour ne pas couper la dernière date.
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16),
@@ -175,12 +193,14 @@ class VariationCard extends StatelessWidget {
   }
 }
 
-/// Variation en % avec flèche et signe : jamais la couleur seule.
-class _Change extends StatelessWidget {
-  final String label;
+/// Pastille de variation en % avec flèche et signe : jamais la couleur seule.
+class ChangeBadge extends StatelessWidget {
   final double value;
 
-  const _Change({required this.label, required this.value});
+  /// Période ajoutée après le pourcentage, ex. « 24 h ».
+  final String suffix;
+
+  const ChangeBadge({super.key, required this.value, this.suffix = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -191,31 +211,33 @@ class _Change extends StatelessWidget {
     final color = stable
         ? theme.colorScheme.onSurfaceVariant
         : up
-        ? (dark ? const Color(0xFF0CA30C) : const Color(0xFF006300))
-        : (dark ? const Color(0xFFE66767) : const Color(0xFFD03B3B));
+        ? (dark ? const Color(0xFF3DD13D) : const Color(0xFF006300))
+        : (dark ? const Color(0xFFFF8A8A) : const Color(0xFFC62828));
     final icon = stable
         ? Icons.trending_flat
         : (up ? Icons.trending_up : Icons.trending_down);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.bodySmall),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(width: 4),
-            Text(
-              stable ? 'Stable' : formatPercent(value),
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '${stable ? 'Stable' : formatPercent(value)}$suffix',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontFeatures: tabularFigures,
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
