@@ -15,10 +15,7 @@ class ConvertisseurApp extends StatelessWidget {
     return MaterialApp(
       title: 'Convertisseur de devises',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.teal,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       darkTheme: ThemeData(
         colorSchemeSeed: Colors.teal,
         brightness: Brightness.dark,
@@ -86,8 +83,10 @@ class _ConverterPageState extends State<ConverterPage> {
       setState(() => _rates = rates);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error =
-          'Impossible de récupérer les taux. Vérifie ta connexion internet.');
+      setState(
+        () => _error =
+            'Impossible de récupérer les taux. Vérifie ta connexion internet.',
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -112,10 +111,8 @@ class _ConverterPageState extends State<ConverterPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => CurrencyPicker(
-        codes: rates.codes,
-        selected: isFrom ? _from : _to,
-      ),
+      builder: (_) =>
+          CurrencyPicker(codes: rates.codes, selected: isFrom ? _from : _to),
     );
     if (selected == null) return;
     setState(() => isFrom ? _from = selected : _to = selected);
@@ -190,6 +187,10 @@ class _ConverterPageState extends State<ConverterPage> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (rates.source == RatesSource.bundled) ...[
+            _FallbackBanner(date: _formatDate(rates.updatedAt)),
+            const SizedBox(height: 16),
+          ],
           TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -249,7 +250,7 @@ class _ConverterPageState extends State<ConverterPage> {
           const SizedBox(height: 16),
           Text(
             'Taux mis à jour le ${_formatDate(rates.updatedAt)}'
-            '${rates.fromCache ? ' (hors ligne)' : ''}',
+            '${rates.source == RatesSource.cache ? ' (hors ligne)' : ''}',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),
@@ -259,6 +260,36 @@ class _ConverterPageState extends State<ConverterPage> {
             style: theme.textTheme.bodySmall,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Avertit que les taux affichés sont ceux livrés avec l'application.
+class _FallbackBanner extends StatelessWidget {
+  final String date;
+
+  const _FallbackBanner({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = isDark ? Colors.orange.shade200 : Colors.orange.shade900;
+    return Card(
+      color: isDark
+          ? Colors.orange.shade900.withValues(alpha: 0.4)
+          : Colors.orange.shade50,
+      child: ListTile(
+        leading: Icon(Icons.warning_amber_rounded, color: fg),
+        title: Text(
+          'Taux de référence du $date',
+          style: TextStyle(color: fg, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          'Pas de connexion : ces taux peuvent être dépassés. '
+          'Connecte-toi pour les mettre à jour.',
+          style: TextStyle(color: fg),
+        ),
       ),
     );
   }
@@ -311,9 +342,11 @@ class _CurrencyPickerState extends State<CurrencyPicker> {
   Widget build(BuildContext context) {
     final q = _query.toLowerCase();
     final filtered = widget.codes
-        .where((c) =>
-            c.toLowerCase().contains(q) ||
-            currencyName(c).toLowerCase().contains(q))
+        .where(
+          (c) =>
+              c.toLowerCase().contains(q) ||
+              currencyName(c).toLowerCase().contains(q),
+        )
         .toList();
 
     return Column(
@@ -343,8 +376,9 @@ class _CurrencyPickerState extends State<CurrencyPicker> {
                 title: Text(code),
                 subtitle: Text(currencyName(code)),
                 selected: code == widget.selected,
-                trailing:
-                    code == widget.selected ? const Icon(Icons.check) : null,
+                trailing: code == widget.selected
+                    ? const Icon(Icons.check)
+                    : null,
                 onTap: () => Navigator.pop(context, code),
               );
             },
