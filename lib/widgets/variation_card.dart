@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../services/history_service.dart';
 import '../utils/format.dart';
+import 'live_chart.dart';
 
 /// Périodes proposées, en jours.
 const historyPeriods = [7, 30, 90];
@@ -22,6 +23,10 @@ class VariationCard extends StatelessWidget {
   final int days;
   final ValueChanged<int> onDaysChanged;
 
+  /// Graphique de cotation en temps réel plutôt que l'historique quotidien.
+  final bool live;
+  final ValueChanged<bool> onLiveChanged;
+
   const VariationCard({
     super.key,
     required this.from,
@@ -30,6 +35,8 @@ class VariationCard extends StatelessWidget {
     required this.loading,
     required this.days,
     required this.onDaysChanged,
+    required this.live,
+    required this.onLiveChanged,
   });
 
   @override
@@ -64,54 +71,102 @@ class VariationCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
-            SegmentedButton<int>(
-              segments: [
-                for (final d in historyPeriods)
-                  ButtonSegment(value: d, label: Text('$d j')),
-              ],
-              selected: {days},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => onDaysChanged(s.first),
-            ),
-            const SizedBox(height: 16),
-            if (series.length < 2)
-              SizedBox(
-                height: 160,
-                child: Center(
-                  child: Text(
-                    loading
-                        ? 'Chargement de l\'historique…'
-                        : history == null
-                        ? 'Historique indisponible (connexion requise).'
-                        : 'Pas d\'historique disponible pour cette paire.',
-                    style: theme.textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
+            if (liveChartSupported) ...[
+              const SizedBox(height: 12),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                    value: true,
+                    label: Text('Temps réel'),
+                    icon: Icon(Icons.candlestick_chart),
                   ),
-                ),
-              )
-            else ...[
-              Wrap(
-                spacing: 24,
-                runSpacing: 8,
-                children: [
-                  if (daily != null)
-                    _Change(label: 'Depuis la veille', value: daily),
-                  _Change(
-                    label: 'Sur $span jour${span > 1 ? 's' : ''}',
-                    value: RateHistory.periodChange(series)!,
+                  ButtonSegment(
+                    value: false,
+                    label: Text('Historique'),
+                    icon: Icon(Icons.show_chart),
                   ),
                 ],
+                selected: {live},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => onLiveChanged(s.first),
+              ),
+            ],
+            if (liveChartSupported && live) ...[
+              if (daily != null) ...[
+                const SizedBox(height: 16),
+                _Change(label: 'Depuis la veille', value: daily),
+              ],
+              const SizedBox(height: 16),
+              if (from == to)
+                const SizedBox(
+                  height: 160,
+                  child: Center(
+                    child: Text('Choisis deux devises différentes.'),
+                  ),
+                )
+              else
+                // Bougies 1 min par défaut ; l'intervalle se change dans la
+                // barre du graphique.
+                SizedBox(
+                  height: 420,
+                  child: LiveChart(from: from, to: to),
+                ),
+              const SizedBox(height: 8),
+              Text(
+                'Cours en direct fournis par TradingView. Sans connexion, '
+                'utilise l\'onglet Historique.',
+                style: theme.textTheme.bodySmall,
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              SegmentedButton<int>(
+                segments: [
+                  for (final d in historyPeriods)
+                    ButtonSegment(value: d, label: Text('$d j')),
+                ],
+                selected: {days},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => onDaysChanged(s.first),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                height: 180,
-                // Marge à droite pour ne pas couper la dernière date.
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: _Chart(series: series, to: to),
+              if (series.length < 2)
+                SizedBox(
+                  height: 160,
+                  child: Center(
+                    child: Text(
+                      loading
+                          ? 'Chargement de l\'historique…'
+                          : history == null
+                          ? 'Historique indisponible (connexion requise).'
+                          : 'Pas d\'historique disponible pour cette paire.',
+                      style: theme.textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else ...[
+                Wrap(
+                  spacing: 24,
+                  runSpacing: 8,
+                  children: [
+                    if (daily != null)
+                      _Change(label: 'Depuis la veille', value: daily),
+                    _Change(
+                      label: 'Sur $span jour${span > 1 ? 's' : ''}',
+                      value: RateHistory.periodChange(series)!,
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 180,
+                  // Marge à droite pour ne pas couper la dernière date.
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _Chart(series: series, to: to),
+                  ),
+                ),
+              ],
             ],
           ],
         ),

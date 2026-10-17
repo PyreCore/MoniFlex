@@ -1,17 +1,31 @@
-# convertisseur_devises
+# MoniFlex
 
-A new Flutter project.
+Convertisseur de devises développé par **PyreCore**.
 
-## Getting Started
+👉 **Utiliser l'application : https://pyrecore.github.io/MoniFlex/**
+(sur iPhone : Partager → « Sur l'écran d'accueil » pour l'installer)
 
-This project is a starting point for a Flutter application.
+## Fonctionnalités
 
-A few resources to get you started if this is your first Flutter project:
+- Conversion entre plus de 160 devises, taux du jour ([open.er-api.com](https://www.exchangerate-api.com)).
+- Fonctionne hors ligne : derniers taux enregistrés, ou taux de référence livrés avec l'app au premier lancement.
+- Cours **en temps réel** façon trading (bougies, intervalles de 1 min à 1 mois) via TradingView.
+- Historique sur 7, 30 ou 90 jours avec variation depuis la veille ([fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api)).
+- Thème clair, sombre ou celui du téléphone.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Développement
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```sh
+flutter pub get
+flutter test
+flutter run -d chrome
+```
+
+Avant chaque version, rafraîchir les taux de référence hors ligne :
+
+```sh
+dart run tool/update_fallback_rates.dart
+```
+
+Chaque push sur `main` est testé puis publié automatiquement sur GitHub Pages
+(`.github/workflows/deploy-web.yml`).

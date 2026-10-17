@@ -12,27 +12,68 @@ import 'widgets/variation_card.dart';
 
 void main() => runApp(const ConvertisseurApp());
 
-class ConvertisseurApp extends StatelessWidget {
+class ConvertisseurApp extends StatefulWidget {
   const ConvertisseurApp({super.key});
+
+  @override
+  State<ConvertisseurApp> createState() => _ConvertisseurAppState();
+}
+
+class _ConvertisseurAppState extends State<ConvertisseurApp> {
+  static const _themeKey = 'themeMode';
+
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      final saved = prefs.getString(_themeKey);
+      if (!mounted || saved == null) return;
+      setState(
+        () => _themeMode = ThemeMode.values.firstWhere(
+          (m) => m.name == saved,
+          orElse: () => ThemeMode.system,
+        ),
+      );
+    });
+  }
+
+  Future<void> _setThemeMode(ThemeMode mode) async {
+    setState(() => _themeMode = mode);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeKey, mode.name);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Convertisseur de devises',
+      title: 'MoniFlex',
       debugShowCheckedModeBanner: false,
+      themeMode: _themeMode,
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       darkTheme: ThemeData(
         colorSchemeSeed: Colors.teal,
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
-      home: const ConverterPage(),
+      home: ConverterPage(
+        themeMode: _themeMode,
+        onThemeModeChanged: _setThemeMode,
+      ),
     );
   }
 }
 
 class ConverterPage extends StatefulWidget {
-  const ConverterPage({super.key});
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+
+  const ConverterPage({
+    super.key,
+    this.themeMode = ThemeMode.system,
+    required this.onThemeModeChanged,
+  });
 
   @override
   State<ConverterPage> createState() => _ConverterPageState();
@@ -56,6 +97,7 @@ class _ConverterPageState extends State<ConverterPage> {
   RateHistory? _history;
   bool _historyLoading = false;
   int _historyDays = historyPeriods.first;
+  bool _liveChart = true;
 
   @override
   void initState() {
@@ -103,6 +145,7 @@ class _ConverterPageState extends State<ConverterPage> {
     setState(() {
       _from = prefs.getString('from') ?? _from;
       _to = prefs.getString('to') ?? _to;
+      _liveChart = prefs.getBool('liveChart') ?? _liveChart;
       _ensureKnownCurrencies();
     });
   }
@@ -123,6 +166,7 @@ class _ConverterPageState extends State<ConverterPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('from', _from);
     await prefs.setString('to', _to);
+    await prefs.setBool('liveChart', _liveChart);
   }
 
   Future<void> _loadRates() async {
@@ -185,6 +229,10 @@ class _ConverterPageState extends State<ConverterPage> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualiser les taux',
             onPressed: _loading ? null : _refresh,
+          ),
+          _ThemeMenu(
+            mode: widget.themeMode,
+            onChanged: widget.onThemeModeChanged,
           ),
         ],
       ),
@@ -297,6 +345,11 @@ class _ConverterPageState extends State<ConverterPage> {
             loading: _historyLoading,
             days: _historyDays,
             onDaysChanged: _setHistoryDays,
+            live: _liveChart,
+            onLiveChanged: (live) {
+              setState(() => _liveChart = live);
+              _savePrefs();
+            },
           ),
           const SizedBox(height: 16),
           Text(
@@ -310,8 +363,49 @@ class _ConverterPageState extends State<ConverterPage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),
+          const SizedBox(height: 24),
+          Text(
+            'Application développée par PyreCore',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// Choix du thème : celui du téléphone, clair ou sombre.
+class _ThemeMenu extends StatelessWidget {
+  final ThemeMode mode;
+  final ValueChanged<ThemeMode> onChanged;
+
+  const _ThemeMenu({required this.mode, required this.onChanged});
+
+  static const _options = {
+    ThemeMode.system: ('Comme le téléphone', Icons.brightness_auto),
+    ThemeMode.light: ('Clair', Icons.light_mode),
+    ThemeMode.dark: ('Sombre', Icons.dark_mode),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<ThemeMode>(
+      icon: Icon(_options[mode]!.$2),
+      tooltip: 'Thème',
+      initialValue: mode,
+      onSelected: onChanged,
+      itemBuilder: (_) => [
+        for (final e in _options.entries)
+          CheckedPopupMenuItem(
+            value: e.key,
+            checked: e.key == mode,
+            child: Text(e.value.$1),
+          ),
+      ],
     );
   }
 }
