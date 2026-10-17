@@ -27,5 +27,12 @@ Avant chaque version, rafraîchir les taux de référence hors ligne :
 dart run tool/update_fallback_rates.dart
 ```
 
+Le logo est défini dans `tool/icon/logo.svg` ; après une modification,
+régénérer les icônes (web et Android, nécessite Google Chrome) :
+
+```sh
+node tool/icon/render_icons.mjs
+```
+
 Chaque push sur `main` est testé puis publié automatiquement sur GitHub Pages
 (`.github/workflows/deploy-web.yml`).
