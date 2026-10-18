@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'calculator/calculator_page.dart';
 import 'data/currencies.dart';
+import 'install/install_ui.dart';
 import 'services/history_service.dart';
 import 'services/rates_service.dart';
 import 'settings/settings_page.dart';
@@ -366,6 +367,7 @@ class _ConverterPageState extends State<ConverterPage> {
                             children: [
                               const LiveClock(),
                               const SizedBox(height: 12),
+                              const InstallBanner(),
                               if (banner != null) ...[
                                 banner,
                                 const SizedBox(height: 16),
@@ -396,6 +398,7 @@ class _ConverterPageState extends State<ConverterPage> {
                     children: [
                       const LiveClock(),
                       const SizedBox(height: 12),
+                      const InstallBanner(),
                       if (banner != null) ...[
                         banner,
                         const SizedBox(height: 16),

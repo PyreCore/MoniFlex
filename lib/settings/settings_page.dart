@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../install/install_support.dart';
+import '../install/install_ui.dart';
 import '../widgets/developed_by.dart';
 import 'theme_controller.dart';
 
@@ -44,6 +46,19 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
           ),
+          if (InstallSupport.available) ...[
+            const Divider(),
+            const _Section('Application'),
+            ListTile(
+              leading: const Icon(Icons.install_mobile),
+              title: const Text('Installer l\'application'),
+              subtitle: const Text(
+                'Sur l\'écran d\'accueil, même hors connexion',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => startInstall(context),
+            ),
+          ],
           const Divider(),
           const _Section('À propos'),
           const ListTile(

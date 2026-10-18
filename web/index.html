@@ -89,6 +89,43 @@
     <div class="bar"></div>
   </div>
   <script>
+    // Installation de l'app (PWA). Chrome (Android, ordinateur) envoie
+    // « beforeinstallprompt » dès l'ouverture, avant le démarrage de
+    // Flutter : on le garde ici pour le bouton « Installer » de l'app.
+    // L'iPhone n'a pas d'équivalent (Partager → Sur l'écran d'accueil).
+    window.moniflexInstall = {
+      deferred: null,
+      installed: false,
+      listeners: [],
+      isStandalone: () =>
+        matchMedia('(display-mode: standalone)').matches ||
+        navigator.standalone === true,
+      isIos: () =>
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+      canPrompt: () => window.moniflexInstall.deferred !== null,
+      prompt: async () => {
+        const event = window.moniflexInstall.deferred;
+        if (!event) return 'unavailable';
+        window.moniflexInstall.deferred = null;
+        event.prompt();
+        return (await event.userChoice).outcome;
+      },
+      onChange: (callback) => window.moniflexInstall.listeners.push(callback),
+    };
+    const notifyInstall = () =>
+      window.moniflexInstall.listeners.forEach((callback) => callback());
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      window.moniflexInstall.deferred = event;
+      notifyInstall();
+    });
+    window.addEventListener('appinstalled', () => {
+      window.moniflexInstall.deferred = null;
+      window.moniflexInstall.installed = true;
+      notifyInstall();
+    });
+
     window.addEventListener('flutter-first-frame', () => {
       const splash = document.getElementById('splash');
       if (!splash) return;
