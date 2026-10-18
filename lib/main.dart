@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'calculator/calculator_page.dart';
 import 'data/currencies.dart';
 import 'services/history_service.dart';
 import 'services/rates_service.dart';
@@ -174,6 +175,17 @@ class _ConverterPageState extends State<ConverterPage> {
     }
   }
 
+  /// Ouvre la calculatrice ; si l'utilisateur choisit « Convertir ce
+  /// montant », le résultat devient le montant à convertir.
+  Future<void> _openCalculator() async {
+    final value = await Navigator.push<double>(
+      context,
+      MaterialPageRoute(builder: (_) => const CalculatorPage()),
+    );
+    if (value == null || !mounted) return;
+    _amountController.text = amountInputText(value);
+  }
+
   double get _amount =>
       double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0;
 
@@ -233,6 +245,11 @@ class _ConverterPageState extends State<ConverterPage> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calculate_outlined),
+            tooltip: 'Calculatrice',
+            onPressed: _openCalculator,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualiser les taux',

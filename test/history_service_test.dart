@@ -104,11 +104,35 @@ void main() {
       });
       final service = HistoryService(client: client, now: () => _now);
       await service.fetch(7);
-      expect(calls, 8);
+      expect(calls, 9); // 8 jours passés (7 + 1 de marge) + « latest »
 
       calls = 0;
       await service.fetch(7);
       expect(calls, 1);
+    },
+  );
+
+  test(
+    'taux du jour pas encore publiés : la période fait quand même 7 jours',
+    () async {
+      final service = HistoryService(
+        client: MockClient((r) async {
+          // « latest » renvoie encore la veille (16), comme tôt le matin.
+          if (r.url.toString().contains('@latest')) {
+            return _fakeApi(
+              http.Request(
+                'GET',
+                Uri.parse('https://x/currency-api@2026-10-16/'),
+              ),
+            );
+          }
+          return _fakeApi(r);
+        }),
+        now: () => _now,
+      );
+      final series = (await service.fetch(7)).series('USD', 'EUR');
+      expect(series.first.date, DateTime.utc(2026, 10, 9));
+      expect(series.last.date, DateTime.utc(2026, 10, 16));
     },
   );
 

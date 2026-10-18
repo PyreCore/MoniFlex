@@ -65,8 +65,11 @@ class HistoryService {
     final today = DateTime.utc(now.year, now.month, now.day);
     final step = days <= 30 ? 1 : 3;
 
+    // Un jour de plus que demandé : tôt le matin, les taux du jour ne sont
+    // pas encore publiés et la période s'arrête la veille ; on recoupe
+    // ensuite sur [days] jours à partir du dernier point disponible.
     final dates = <DateTime>[
-      for (var i = days; i > 0; i--)
+      for (var i = days + 1; i > 0; i--)
         if (i <= 2 || _epochDay(today.subtract(Duration(days: i))) % step == 0)
           today.subtract(Duration(days: i)),
     ];
@@ -81,6 +84,9 @@ class HistoryService {
       if (r != null) history[r.$1] = r.$2;
     }
     if (history.isEmpty) throw Exception('Historique indisponible');
+    final latest = history.keys.reduce((a, b) => a.isAfter(b) ? a : b);
+    final start = latest.subtract(Duration(days: days));
+    history.removeWhere((date, _) => date.isBefore(start));
 
     _pruneCache(prefs, today);
     return RateHistory(history);

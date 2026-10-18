@@ -15,6 +15,14 @@ String formatAmount(double value) {
   return parts.length > 1 ? '$intPart,${parts[1]}' : intPart;
 }
 
+/// Montant tel qu'on le taperait dans le champ « Montant » : sans espaces,
+/// virgule décimale, 6 décimales au plus (« 1234,5 »).
+String amountInputText(double value) {
+  var s = value.toStringAsFixed(6);
+  if (s.contains('.')) s = s.replaceFirst(RegExp(r'\.?0+$'), '');
+  return s.replaceAll('.', ',');
+}
+
 /// Pourcentage signé : « +0,42 % », « −1,30 % ».
 String formatPercent(double value) {
   final sign = value > 0 ? '+' : (value < 0 ? '−' : '');
